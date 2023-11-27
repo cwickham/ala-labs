@@ -1,83 +1,171 @@
 ---
-title: "Generating species lists for Local Government Areas (LGAs) with counts using shape files"
-author: "Amanda Buyan,Dax Kellie"
-date: 2023-11-23
-format: 
-  html:
-    css: style.css
-    highlight-style: tango
+title: "Make a species list for a Local Government Area (LGA)"
+description: |
+  Knowing what species have been observed in a local area is an important, regular task for ecosystem management and environmental impact assessment. Here we show how to use `galah-python` to make a species list using layers available in `galah-python`, using a shapefile, 
+author:
+  - name: "Amanda Buyan"
+  - name: "Dax Kellie"
+date: "2023-11-23"
+title-block-banner: "#B8573E"
+include-after-body: _footer.html
+toc: true
+toc-location: left
+toc-depth: 2
+categories:
+  - Eukaryota
+  - Animalia
+  - Chordata
+  - Anura
+  - Maps
+image: tbd
 draft: true
+freeze: true
+engine: knitr
+jupyter: python3
+editor_options: 
+  chunk_output_type: console
 ---
 
-Species lists are important for individuals who want to report on what species there are in a particular area, and cross reference it with threatened species lists.  This can be useful for governments, consultants and researchers.
+```{r}
+#| include: false
+library(htmltools)
+```
 
-In this post, we will show you how to use `galah-python` and `geopandas` to generate a species list for the LGA of Yass Valley in 2023, as well as a visualisation using `matplotlib` of all LGAs with names.
+<!-- remove metadata section -->
+<style>
+  #title-block-header.quarto-title-block.default .quarto-title-meta {
+      display: none;
+  }
+</style>
 
-## Generating a species list with counts for the Yass Valley in 2023 using spatial data in the ALA
 
-First, we will set configurations for `galah-python`, as we want to be sure we are querying the ALA and not other living atlases for this exercise.
+
+<!-- Author card -->
+
+:::{.author-card}
+:::{.author-card-text}
+
+#### Author
+[Amanda Buyan](https://labs.ala.org.au/people/Buyan_Amanda/index.html)  
+[Dax Kellie](https://labs.ala.org.au/people/Kellie_Dax/index.html)  
+
+#### Date
+23 November 2023
+
+:::
+
+:::{.author-card-image}
+```{r, out.width='120px', out.extra='style="clip-path: circle();"', echo=FALSE}
+knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustralia/ala-labs/main/images/people/amanda.jpg")
+```
+:::
+
+:::{.author-card-image}
+```{r, out.width='120px', out.extra='style="clip-path: circle();"', echo=FALSE}
+knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustralia/ala-labs/main/images/people/dax.jpg")
+```
+:::
+
+:::
+
+<!------------------------ Post starts here ------------------------>
+
+Knowing what species inhabit an area is important for conservation and ecosystem management. It is also useful to know how common or rare each species might be.
+
+To accomplish this, species lists are a frequent tool to assess what species are in a given area for monitoring and environmental impact assessments. Often, these lists are asked to be produced for specific regions like Local Government Areas (LGAs) or specific monitoring locations within a region.
+
+In this post, we show how to use `galah-python` and `geopandas` to generate a species list for an Local Government Area—the Yass Valley—over the past year.
+
+# Make a species list
+
+There are two ways to narrow a query to return information for a specific region:  
+
+  * Using fields available in `galah-python` (downloaded from the ALA)
+  * Using a shapefile
+  
+The method you choose depends on whether the region you wish to return species for is already within `galah-python` and whether you require a list for a more specific area defined by a shapefile.
+
+Let's go through each of the methods in turn to return a list of species in the Yass Valley in 2023.
+
+First, let's import galah.
 
 ```{python}
 import galah
-galah.galah_config(atlas = "Australia")
 ```
 
-Now, we want to build our query for the `atlas_species()` function to generate the list.  First, we know that we only want species for the year 2023 in this example.  To check what filter we should use for our year, we will use one of `galah-python`'s many lookup functions, `search_all()`.  We will use the `fields` argument, as this is what you will use the majority of the time to narrow the data you want to get from the ALA.
+## galah-python fields
+
+### Search for fields
+
+Let's find which fields and layers exist within `galah-python` for us to use to narrow our query to a specific LGA region and year.
+
+We can use the `search_all()` function to search for many types of information in `galah-python`. Let's use it to look up what `field`s contain the word "year". Our search returns several options, though the best option seems to be field `id` `"year"`.
 
 ```{python}
 galah.search_all(fields="year")
 ```
 
-There are a number of options available, but we will choose the one called `year`, as that refers to the year in which an occurrence occurred and is what we want.
+If we want to double check whether a given field contains information we are interested in, we can use the `show_values()` to see what categories a specified `field` contains.
 
-Before getting our species list, we will need to find out how to search for spatial data on Local Government Areas in the ALA.  We will use the search term `Local Government Areas` to ensure we get only the relevant spatial data.
+```{python}
+galah.show_values(field="year")
+```
+
+Now let's use the same process to find whether any fields contain spatial data of Local Government Areas.
 
 ```{python}
 galah.search_all(fields="Local Government Areas")
 ```
 
-We will be using `cl10923`, as this is the latest data on LGAs in the ALA.  A note about spatial layers: Each spatial layer has a two letter code, along with a number to identify it.  The abbreviations are as follows:
-
-`cl` = contextual layer (i.e. boundaries of LGAs, Indigenous Protected Areas, States/Territories etc.)
-
-`10923` = number associated with the spatial layer in the atlas
-
-To get all possible values for this spatial layer, we will use another lookup function in `galah-python`: the `show_values()` function.
+There are several options, though `cl10923` seems to be contain the most recent data (from 2018). Let's check what this `field` contains.
 
 ```{python}
 galah.show_values(field="cl10923")
 ```
 
-Since there are 560 LGAs within Australia, it is a lot of data to filter through!  Luckily, `galah-python` can handle this too with its accompanying lookup function: `search_values()`.
+We can also check whether it contains Yass Valley specifically with `search_values()`.
 
 ```{python}
-galah.search_values(field="cl10923",value="YASS")
+galah.search_values(field="cl10923", value = "YASS VALLEY")
 ```
 
-Now we know that `YASS VALLEY COUNCIL` is the value we want for our spatial filter, we can then build our query to get a species list for Yass Valley:
+
+:::.callout-note
+Each spatial layer has a two letter code, along with a number to identify it.  The abbreviations are as follows:
+
+  * `cl` = contextual layer (i.e. boundaries of LGAs, Indigenous Protected Areas, States/Territories etc.)  
+  * `10923` = number associated with the spatial layer in the atlas
+
+:::
+
+
+### Make species list
+
+Now we can use the `year` and `cl10923` fields to build a query to get a list of species that were observed in Yass Valley over 2023. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query.
 
 ```{python}
 galah.atlas_species(filters=["year=2023","cl10923=YASS VALLEY COUNCIL"])
 ```
 
-To get the number of occurrences of each species, include the newly added argument `counts=True`.  This defaults to `False`, as some people may only want species lists.
+To add the observation count for each species, add `counts=True`.
 
 ```{python}
-galah.atlas_species(filters=["year=2023","cl10923=YASS VALLEY COUNCIL"],counts=True)
+species_yass = galah.atlas_species(filters=["year=2023","cl10923=YASS VALLEY COUNCIL"],counts=True)
+species_yass
 ```
 
-Now, to save this to a file that can be used for reporting, we can use the `pandas dataframe` built-in function `to_csv`.
+To save this species list as a csv, we can use `to_csv()` from the `pandas dataframe` package.
 
 ```{python}
-species_list_yass_valley_counts = galah.atlas_species(filters=["year=2023","cl10923=YASS VALLEY COUNCIL"],counts=True)
-species_list_yass_valley_counts.to_csv("Species_List_Yass_Valley_Counts_ALA_Spatial_Filter.csv")
+species_yass.to_csv("Species_List_Yass_Valley_Counts_ALA_Spatial_Filter.csv")
 ```
 
-## Generating a species list with counts for the Yass Valley in 2023 using a shapefile from the Australian Bureau of Statistics.
 
-Now, we will build the same query, but use the latest LGA data from the [Australian Bureau of Statistics Digital Boundary files page](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files).  For this tutorial, we will need the "Local Government Areas - 2023 - Shapefile" shapefile.  Once you have downloaded it, unzip it to make sure you have the `LGA_2023_AUST_GDA2020.shp` file.  Put it in a folder you can easily access.
+## Shapefile
 
-To load this shapefile into `Python`, we need the aforementioned `geopandas`.
+Let's download the latest Local Government Areas data from the [Australian Bureau of Statistics Digital Boundary files page](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files).  Find "Local Government Areas - 2023 - Shapefile" and click "Download ZIP". Save the zip folder in your current directory and unzip it.
+
+We'll use `read_file()` from `geopandas` to load our shapefile.
 
 ```{python}
 import geopandas as gpd
@@ -85,16 +173,20 @@ LGAs_2023 = gpd.read_file("LGA_2023_AUST_GDA2020.shp")
 LGAs_2023
 ```
 
-Now that we have the shapefile loaded in, we need to ensure that it is in the correct Coordinate Reference System (CRS).  What a CRS is is a way of representing coordinates of the earth (which are in three dimensions) into a two-dimensional representation.  There are many available, and the ALA chooses to use the [World Geodetic System 84, which is the standard used in cartography and GPS](https://en.wikipedia.org/wiki/World_Geodetic_System).  To ensure you are in the correct Coordinate Reference System, `geopandas` has a handy function called `to_crs()` that will automatically do the conversion for you.  However, the `to_crs` function uses something called the EPSG system, which is named after the [European Petroleum Survey Group](https://wiki.gis.com/wiki/index.php/European_Petroleum_Survey_Group).  EPSG was a scientific organisation specialising in [geospatial exercises relatied to oil exploration](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset).  Though the European Petroleum Survey Group is no longer around, many things, including `geopandas`, use their CRS codes.  The one corresponding to WGS84 is EPSG:4326.  To change the Coordinate Reference System for a shapefile, simply enter the four-digit code as the argument to the `to_crs()` function. 
+Now let's set Coordinate Reference System (CRS) of our shapefile.  A CRS is a method of representing coordinates of the spherical earth onto a flat, two-dimensional map. ALA observations are projected using  [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System) (the standard used in cartography and GPS), also known as [EPSG](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset):4326. 
+
+`geopandas` has a handy CRS-setting function, `to_crs()`. 
 
 ```{python}
 LGAs_2023 = LGAs_2023.to_crs(4326)
 LGAs_2023.plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,5))
 ```
 
-Now that we can see all of the LGAs in New South Wales, we can then use `matplotlib` to show us the names of the LGAs in relation to where they are on the map.
+[*I don't think this is something beginner users will find useful. I assume they just want to get a list. I suggest removing the below chunk of code*]
 
 ```{python}
+#| eval: false
+#| echo: false
 from matplotlib import pyplot as plt
 NSW = LGAs_2023[LGAs_2023['STE_NAME21'] == "New South Wales"]
 NSW.plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (14,10))
@@ -105,78 +197,65 @@ for idx, row in NSW.iterrows():
                     horizontalalignment='center', fontsize = 8)
 ```
 
-For this exercise, we are going to choose the Yass Valley, though users can choose others of interest if the prefer.  First, we need to isolate the shape of Yass Valley from the others.  If we look at data columns in the NSW data frame:
+We'll filter our shapefile to only Yass Valley. The column `LGA_NAME23` appears to contain names we can use to filter our `Dataframe`, and the column `geometry` contains information to draw our LGA shape.
 
 ```{python}
 NSW.columns
 ```
 
-The two columns of interest are the ones titled `LGA_NAME23` and `geometry`.  To select only the row with the LGA name `Yass Valley`, we need to write that in terms `pandas` will understand.  To do this, we need to use the comparative `==` within the dataframe itself.
+We can filter to return only the row with information of `Yass Valley`.
 
 ```{python}
 NSW[NSW['LGA_NAME23'] == "Yass Valley"]
 ```
 
-Now that we have chosen the row that we want, we will now need to choose the column of data that we want.  To choose both the row and the column we want, we will add another argument at the end of the dataframe in `[]` with the name of the column.  In our case, we want to use the word `geometry`.
+We can also add the `geometry` column by adding its name within brackets (`[]`) at end of the dataframe.
 
 ```{python}
-NSW[NSW['LGA_NAME23'] == "Yass Valley"]["geometry"]
+yass_valley = NSW[NSW['LGA_NAME23'] == "Yass Valley"]["geometry"]
+yass_valley
 ```
 
-Now that we have selected the row and the column we want, we need to tell Python the row number to get the individual cell's data.
+To use this shape to return a species list, we need to provide `atlas_species()` the `geometry` information to narrow our query. Let's save it as `yass_valley_geometry` and pass it to the `polygon` argument of `atlas_species()`. [*Rather than choose row 127 of your shapefile, I think it's simpler to save your filtered object, then just select row 1. I've ameneded this as I think it's easier for beginners to understand*] 
 
 ```{python}
-NSW[NSW['LGA_NAME23'] == "Yass Valley"]["geometry"][127]
-```
-
-Now that we have chosen the shape that we want, we will store it in a variable titled `yass_valley_geometry` to use for the rest of our queries.
-
-```{python}
-yass_valley_geometry = NSW[NSW['LGA_NAME23'] == "Yass Valley"]["geometry"][127]
-```
-
-Now, we can get a species list of all species in the Yass Valley using the variable above.
-
-```{python}
+yass_valley_geometry = NSW[NSW['LGA_NAME23'] == "Yass Valley"]["geometry"][1]
 galah.atlas_species(polygon=yass_valley_geometry)
 ```
 
-If we want to get the number of times each species has been spotted in the Yass valley, we can then add the `counts=True` argument to `atlas_species()`.
-
-```{python}
-galah.atlas_species(polygon=yass_valley_geometry,counts=True)
-```
-
-Say now you want to only look at specific years for either reporting reasons, or to see how observations differ from year to year in your LGA.  You can add `filters` like we did in the previous example, with `year=2023`.
+We can also narrow our query to only 2023 observations by adding year to `filters`.
 
 ```{python}
 galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023")
 ```
 
-Now, to round out our query, we will add the `counts=True` argument to get the number of records for each species seen in the Yass Valley LGA for the year 2023.
+To add the observation count for each species, add `counts=True`.
 
 ```{python}
-galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023",counts=True)
+species_yass = galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023",counts=True)
+species_yass
 ```
 
-If you need a spreadsheet for reporting purposes, `pandas` dataframes allow you to save your data in a csv file.
+To save this species list as a csv, we can use `to_csv()` from the `pandas dataframe` package.
 
 ```{python}
-yass_valley_species_list_counts = galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023",counts=True)
-yass_valley_species_list_counts.to_csv("Yass_Valley_Species_List_Counts_2023.csv")
+species_yass.to_csv("Species_List_Yass_Valley_Counts_ALA_Spatial_Filter.csv")
 ```
 
-## Checking your Yass Valley 2023 species list with lists of species that are on conservation and/or sensitive species lists
 
-Often, researchers, as well as consultants and those in the industry, will want to hceck if there are any species that are threatened or treated as sensitive species in their area of interest.  ALA houses these lists for its useres, and we will show you how you can use this lists knowledge in `galah-python` to be able to select only species on these lists.
+## Use threatened species list
 
-First, we will re-introduce the user to the `show_all()` function in `galah-python`, but instead of using the `fields` option, we will be using the `lists` option.
+Often, it's useful to know what species in a given location are threatened or sensitive species. The ALA contains many lists, including national and regional threatened species lists, so it's possible to use `galah-python` to find which species are threatened or sensitive to extinction risk.
+
+Let's use `show_all()` again, this time using the `lists` option to return the lists available in the ALA and their `listType`.
 
 ```{python}
 galah.show_all(lists=True)
 ```
 
-We can see in the columns that we get things like `listName` and `listType`, but a quick way to get to lists that are trusted is searching whether the list is authoritative or not.  The Atlas has the `isAuthoritative` option to let the user know if the list comes from a trusted authority.  One other criterion we can use for this exercise is the `isThreatened` column.
+[*this example is a bit opaque when the user can't see the columns you are talking about. Is there a way to display the columns you want to filter?*]
+
+A quick way to filter to lists from trusted authorities is to use the `isAuthoritative` column, where the ALA has set any authoritative lists as `True`. We can do the same to return lists of threatened species using the `isThreatened` column.
 
 ```{python}
 lists_all = galah.show_all(lists=True)
@@ -185,39 +264,35 @@ lists_authoritative_threatened = lists_all[lists_all['isThreatened'] == True]
 lists_authoritative_threatened
 ```
 
-Once both these flags are taken into consideration, we can see that we get all the authoritative lists of threatened species.  We can also see that the sixth row is titled `New South Wales : Conservation List`, which is what we will be using.
+[*I think that it's better to maybe do a text search for 'New South Wales'? That way users could find one that's useful for their own purposes*] We can also see that the sixth row is titled `New South Wales : Conservation List`, which is what we will be using.
 
-If you were not concerned only with threatened species, you could either use the authoritative lists, or instead search for lists that have `New South Wales` in the title using the `search_all()` function in `galah-python`.
+[*Which option is more efficient? I'd probably only provide one option*] If you were not concerned only with threatened species, you could either use the authoritative lists, or instead search for lists that have `New South Wales` in the title using the `search_all()` function in `galah-python`.
 
 ```{python}
 galah.search_all(lists="New South Wales")
 ```
 
-Here, we see we get the aforementioned `New South Wales : Conservation Status` list, but we also get the `New South Wales Sensitive Species List`.  The second one did not come up in our previous search because, even though it is an authoritative list, it does not include threatened species.  For this exercise, we will only use the first list, though the user can add multiple lists if they require it.
 
-Users should note that when searching using a species list, despite the column name of the lists reading `dataResourceUid`, the filter `species_list_uid` should be used instead.
-
-Here is our original query:
-
-```{python}
-galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023")
-```
-
-Now, we can add the ID of the conservation species list.
-
-```{python}
-galah.atlas_species(polygon=yass_valley_geometry,filters=["year=2023","species_list_uid=dr650"])
-```
-
-Now, if the user wants to know how many times this animal has been recorded, we can add the `counts=True` argument.
+To narrow a query to species on a species list (despite the column name of the lists reading `dataResourceUid`), use the field `species_list_uid` to supply the species list `id` of our desired list to the `filters` argument.
 
 ```{python}
 galah.atlas_species(polygon=yass_valley_geometry,filters=["year=2023","species_list_uid=dr650"],counts=True)
 ```
 
-To get the list into a csv file, run
+# Final thoughts
+
+We hope blah blah, any ways to extend this?
+
+<details><summary style = "color: #E06E53;">Expand for session info</summary>
 
 ```{python}
-yass_valley_species_list_conservation_counts = galah.atlas_species(polygon=yass_valley_geometry,filters=["year=2023","species_list_uid=dr650"],counts=True)
-yass_valley_species_list_conservation_counts.to_csv("Yass_Valley_Species_List_Conservation_Counts_2023.csv")
+#| echo: false
+import math
+import natsort
+import pandas
+import session_info
+
+session_info.show()
 ```
+
+</details>
