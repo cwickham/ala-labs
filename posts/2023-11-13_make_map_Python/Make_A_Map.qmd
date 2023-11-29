@@ -119,7 +119,6 @@ To find species' scientific names, we suggest using the `search_taxa()` function
 #| eval: false
 #| echo: true
 #| warning: false
-import pandas as pd
 galah.search_all(fields="year")
 ```
 
