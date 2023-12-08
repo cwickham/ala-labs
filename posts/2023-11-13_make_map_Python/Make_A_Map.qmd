@@ -1,7 +1,7 @@
 ---
-title: "Make a map of species observations in under 5 minutes"
+title: "Make a map of species observations in Python and R"
 description: |
-  The ability to make a map quickly is an essential skill in ecology and conservation. This post shows how to make a quick, simple map of Peron's tree frog occurrences using `galah-python`, `geopandas` & `matplotlib`.
+  The ability to make a map quickly is an essential skill in ecology and conservation. This post shows how to make a quick, simple map of Peron's tree frog occurrences using either Python or R.
 author:
   - name: "Amanda Buyan"
   - name: "Dax Kellie"
@@ -70,9 +70,13 @@ knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustrali
 
 <!------------------------ Post starts here ------------------------>
 
-Maps are one of the most common and useful data visualisation tools in an ecologist's tool belt. Making a quick and simple map of species observations is especially useful when first investigating where a species has occurred. Viewing locations of points helps to understand the extent of your data (and spot possible errors or outliers). 
+Maps are one of the most common and useful data visualisation tools in an ecologist's tool belt. Making a quick and simple map of species observations is especially useful when first investigating where a species has occurred. Viewing locations of points can also help to understand the extent of your data (and spot possible errors or outliers). 
 
-In this post, we will use Python to make a map in under 5 minutes of Peron's tree frog (*Litoria peronii*) observations in New South Wales, Australia recorded by FrogID since 2018 using the `galah_python`, `geopandas` and `matplotlib` packages.  
+In this post, we will use either Python or R to make a map of observations of Peron's tree frog (*Litoria peronii*) in New South Wales since 2018 recorded by FrogID.
+
+::: {.panel-tabset .nav-pills}
+
+# Python
 
 ## Download data
 
@@ -99,27 +103,31 @@ First, let's import `galah-python`.
 import galah
 ```
 
-To run a command asking `galah-python` to tell you the total number of records the Atlas of Living Australia has, use `atlas_counts`.
+
+### Search for taxa
+
+When trying to download data about any species or clade, we can search using `search_taxa()`. It's recommended to use `search_taxa()` to check whether a taxonomic search returns what you were expecting (even if you know the scientific name)! We can check taxonomic information about Peron's tree frog with `search_taxa()`, which returns extra details about the species when a match is found.
 
 ```{python}
 #| eval: true
 #| message: false
 #| warning: false
-galah.atlas_counts()
+galah.search_taxa("Litoria peronii")
 ```
 
-We can then narrow down the number of record counts by providing one or more of the following:
+### Search for fields
 
-- Species scientific name(s)
-- Filters
+Next, we can search for fields and field IDs for filtering our query. In this case, we are interested in filtering to a specific year, state/territory and data resource. 
 
-To find species' scientific names, we suggest using the `search_taxa()` function of `galah-python` or by doing a Google search of your favourite species.  To find other ways to narrow your query, you can use the `galah.show_all()` command, which will show you all possible fields to narrow search.  However, if you want to search for a particular string of text in a field, use the `galah.search_all()` function.
+We can start by searching for any fields containing the word "year" using `search_all()`.
 
 ```{python}
 #| eval: false
 #| echo: true
 #| warning: false
-galah.search_all(fields="year")
+galah.search_all(
+  fields="year"
+  )
 ```
 
 ```{python}
@@ -132,11 +140,94 @@ pd.set_option('expand_frame_repr', False)
 galah.search_all(fields="year")
 ```
 
-If we were to choose `year` as our filter, the other things we need to do is to find what value we want to filter by.  To find all possible values of `year`, use the `show_values()` function.  To search for specific values, use the `search_values()` function.
+We can do the same kind of search to find fields with information of australian states/territories and data resource names.
 
-Let's map the locations of Peron's tree frog since 2018 in New South Wales by FrogID.  First, we will find how many records there are of Peron's tree frog that match our query. It's good practice check how many observations there are of a given species so you know how many to expect when you download them! 
+```{python}
+#| eval: false
+#| echo: true
+#| warning: false
+galah.search_all(
+  fields="states"
+  )
+```
 
-We'll use `atlas_counts()` to download record counts, specifying the taxon we want using the `taxa` argument, and narrowing the year range, state/territory and data resource using the `filters` argument.
+```{python}
+#| eval: true
+#| echo: false
+#| warning: false
+import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('expand_frame_repr', False)
+galah.search_all(fields="states")
+```
+
+```{python}
+#| eval: false
+#| echo: true
+#| warning: false
+galah.search_all(
+  fields="dataresourcename"
+  )
+```
+
+```{python}
+#| eval: true
+#| echo: false
+#| warning: false
+import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('expand_frame_repr', False)
+galah.search_all(
+  fields="dataResource", 
+  column_name="id"
+  )
+```
+
+If you are ever uncertain which field ID to choose, you can use `show_values()` to see what possible values are *within* a field. For example, let's see what values are in field ID `cl22`.
+
+```{python}
+#| eval: false
+#| echo: true
+#| warning: false
+galah.show_values(field="cl22")
+```
+
+```{python}
+#| eval: true
+#| echo: false
+#| warning: false
+import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('expand_frame_repr', False)
+galah.show_values(field="cl22")
+```
+
+We can also search for a value using `search_values()`, which might be handy to check that "FrogID" is a value in `dataResourceName`.
+
+```{python}
+#| eval: false
+#| echo: true
+#| warning: false
+galah.search_values(field="dataResourceName")
+```
+
+```{python}
+#| eval: true
+#| echo: false
+#| warning: false
+import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('expand_frame_repr', False)
+galah.search_values(field="dataResourceName", value="frogid")
+```
+
+### Download observations
+
+Now we are ready to build our query to download observations of Peron's tree frog since 2018 in New South Wales by FrogID. 
+
+First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidentally massive download)! 
+
+We'll use `atlas_counts()` to download record counts, specifying the taxon using the `taxa` argument, and narrowing the year range, state/territory and data resource using the `filters` argument.
 
 ```{python}
 galah.atlas_counts(                      # *Download record counts*
@@ -147,11 +238,7 @@ galah.atlas_counts(                      # *Download record counts*
 )
 ```
 
-<aside>
-For a step-by-step explanation on how to form this query in Python, visit [this galah-python workhop episode](https://atlasoflivingaustralia.github.io/galah-python-workshop/02-Building-An-Example-Query/index.html).
-</aside>
-
-Now we can use `atlas_occurrences()` to download occurrence records!
+Now we can use `atlas_occurrences()` to download occurrence records, which returns each observation's location coordinates and event date.
 
 You will need to first provide a [registered email with the ALA](https://auth.ala.org.au/userdetails/registration/createAccount) using `galah_config()` before retrieving records.
 
@@ -188,17 +275,19 @@ frogs = galah.atlas_occurrences(
 frogs
 ```
 
-As we can see, we get 8 columns by default from the ALA; to make our map,however, we only need `scientificName`,`decimalLatitude`, and `decimalLongitude` columns.
 
-# Make a map
+
+## Make a map
 
 It's time to make our map!  
 
-In order to draw our map of New South Wales, we'll download a shapefile of the latest state and territory boundaries from the Australian Bureau of statistics (link [here](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files)). Download the "States and Territories - 2021 - Shapefile" zip file, and save the zip file in the same folder you are coding in.
+In order to draw our map of New South Wales, we'll download a shapefile of the latest [state and territory boundaries from the Australian Bureau of statistics](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files). Download the "States and Territories - 2021 - Shapefile" zip file, and save the zip file in the same folder you are coding in.
 
-Let's load our States and Territories shapefile with `read_file()` and save it as `states`.  Then, we will choose the part of the shape that represents New South Wales.  We will also specify that the edges of the shape are black, the inside of the shape is white, and the figure size is in inches, the default unit for matplotlib.
+Let's load our States and Territories shapefile with `read_file()` and save it as `states`. Then, we will filter the shapefile to New South Wales and quickly plot it (specifying that the edges are black, the inside is white, and the figure size is 12 x 6 inches).
 
 ```{python}
+#| echo: true
+#| eval: false
 from matplotlib import pyplot as plt
 import geopandas as gpd
 
@@ -209,20 +298,34 @@ states = gpd.read_file("STE_2021_AUST_GDA94.shp")
 states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
 ```
 
-We will also set the Coordinate References System (CRS), which determines how our points on the spherical globe are oriented when drawn as a flat surface. The projection of ALA data is EPSG:4326 (also known as "WGS84"). Setting the CRS allows us to make sure the points of our data align correctly with our shapefile.
+```{python}
+#| echo: false
+#| eval: true
+from matplotlib import pyplot as plt
+import geopandas as gpd
+
+# Load Australian state and territory boundaries
+## Note: For rendering, you can find this data in the Science & Decision Support team folder in Data/ala-labs
+states = gpd.read_file("../data/Australia_state_boundaries/STE_2021_AUST_GDA94.shp")
+
+# Filter to New South Wales and plot
+states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
+```
+
+We will also set the Coordinate References System (CRS), which determines how our points are oriented on the spherical globe when drawn as a flat surface. The projection of ALA data is EPSG:4326 (also known as "WGS84"). Setting the CRS allows us to make sure the points of our data align correctly with our shapefile.
 
 ```{python}
 states = states.to_crs(4326)
 ```
 
-Now, we will add our species data to the map.  First, we will plot our reprojected shapefile.  Then, we will overlay a scatter plot using `decimalLongitude` as your x axis and `decimalLatitude` as your y axis.  `c` represents the colour for the scatterplot points, and alpha is how transparent the points are (`1` is no transparency, `0` is fully transparent).
+Now, we will add species observations to our map. First, we will plot our reprojected shapefile. Then, we will overlay a scatter plot using `decimalLongitude` as your x axis and `decimalLatitude` as your y axis.  We'll set the colour (`c`) and adjust the `alpha` to make our points partially transparent.
 
 ```{python}
 states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
 plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", alpha = 0.5)
 ```
 
-For some final touches (to make the map prettier), we can add labels, titles and legends, as well as save the figure.
+For some final touches (to make the map prettier), we can add a title and remove the border.
 
 ```{python}
 #| column: screen-inset
@@ -234,10 +337,8 @@ For some final touches (to make the map prettier), we can add labels, titles and
 
 states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
 plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", alpha = 0.5, label = "Litoria peronii")
-plt.legend()
-plt.xlabel("Longitude",fontsize=16)
-plt.ylabel("Latitude",fontsize=16)
-plt.title("Peron's tree frog\nFrogID observations in New South Wales since 2018",fontsize=20)
+plt.title("Peron's tree frog\nFrogID observations in New South Wales since 2018",fontsize=19)
+plt.axis('off')
 ```
 
 To save your plot in your current folder, you can use:
@@ -247,41 +348,8 @@ To save your plot in your current folder, you can use:
 plt.savefig("perons_tree_frog_nsw.png")
 ```
 
-```{python}
-#| code-fold: true
-#| eval: false
 
-import galah
-from matplotlib import pyplot as plt
-import geopandas as gpd
-
-# Load Australian state and territory boundaries
-states = gpd.read_file("STE_2021_AUST_GDA94.shp")
-
-# Filter to New South Wales
-states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
-
-# Change your Coordinate Reference System to the same as the ALA CRS
-states = states.to_crs(4326)
-
-# Plot your shape file
-ax = states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
-
-# Plot your species points over the shape file
-plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", alpha = 0.5)
-
-# add a legend to show what species you are plotting
-plt.legend()
-
-# set X and Y label so users know they are looking at degrees latitude and longitude
-ax.set_xlabel("Longitude",fontsize=16)
-ax.set_ylabel("Latitude",fontsize=16)
-
-# add a title to your plot
-plt.title("Peron's tree frog\nFrogID observations in New South Wales since 2018",fontsize=20)
-```
-
-# Final thoughts
+## Final thoughts
 
 We hope this post has helped make the basic steps of making a map simple and easy to understand. For more advanced mapping in Python, check out our ALA Labs article on [how to map invasive species](https://labs.ala.org.au/posts/2023-04-28_plotting-invasive-species/post.html).
 
@@ -299,3 +367,255 @@ session_info.show()
 ```
 
 </details>
+
+
+
+# R
+
+## Download data
+
+Peron's Tree frog is one of the most recorded frog species in the Atlas of Living Australia. Growing up to 7cm in length, it is well-known for its eyes which often look like they have a black cross on them!
+
+::: {layout-ncol="3" style="margin-left: auto; margin-right: auto;"}
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/8/e/f/0/b32e7003-0ab0-4d8d-95af-b8ea4e730fe8/original" class="rounded"/></img>
+
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/2/6/4/2/201f6e7f-9a28-4acd-8ac8-f089f6fb2462/original" class="rounded"/></img>
+
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/1/b/7/4/41d58826-abce-4647-8c25-335f145647b1/original" class="rounded"/></img>
+:::
+
+::: figure-caption
+Left: [*Litoria peronii* (Giverny CC-BY-NC 4.0 (Int)](https://biocache.ala.org.au/occurrences/4d4a1b5d-f70f-4286-9282-3c325cdf2646), Middle: [*Litoria peronii* (debtaylor142 CC-BY-NC 4.0 (Int))](https://biocache.ala.org.au/occurrences/ed5f63f8-be87-41e0-9382-894c3fc45eda), Right: [*Litoria peronii* (Ernst Weiher, iNaturalist CC-BY-NC 4.0 (Int))](https://biocache.ala.org.au/occurrences/e0cd9d37-c994-40f3-95dd-d5da09b12b67)
+:::
+
+First, let's load some packages.
+
+```{r}
+#| message: false
+#| warning: false
+library(galah)
+library(ggplot2)
+library(sf)
+library(here)
+```
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+rm(frogs)
+```
+
+### Search for taxa
+
+When trying to download data about any species or clade, we can search using `search_taxa()`. It's recommended to use `search_taxa()` to check whether a taxonomic search returns what you were expecting (even if you know the scientific name)! We can check taxonomic information about Peron's tree frog with `search_taxa()`, which returns extra details about the species when a match is found.
+
+```{r}
+search_taxa("Litoria peronii")
+```
+
+### Search for fields
+
+Next, we can search for fields and field IDs for filtering our query. In this case, we are interested in filtering to a specific year, state/territory and data resource. 
+
+We can start by searching for any fields containing the word "year" using `search_all()`.
+
+```{r}
+search_all(fields, "year")
+```
+
+We can do the same kind of search to find fields with information of australian states/territories and data resource names.
+
+```{r}
+search_all(fields, "states")
+search_all(fields, "resource")
+```
+
+If you are ever uncertain which field ID to choose, you can use `show_values()` to see what possible values are *within* a field. For example, let's see what values are in field ID `cl22`.
+
+```{r}
+search_all(fields, "cl22") |>
+  show_values()
+```
+
+We can also search for a value using `search_values()`, which might be handy to check that "FrogID" is a value in `dataResourceName`.
+
+```{r}
+search_all(fields, "dataResourceName") |>
+  search_values("FrogID")
+```
+
+### Download observations
+
+Now we are ready to build our query to download observations of Peron's tree frog since 2018 in New South Wales by FrogID. 
+
+First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidentally massive download)! 
+
+We'll use `atlas_counts()` to download record counts, specifying the taxon using `galah_identify()`, and narrowing the year range, state/territory and data resource using `galah_filter()`.
+
+```{r}
+galah_call() |>                                 # Begin a query
+  galah_identify("Litoria peronii") |>          # Peron's tree frog
+  galah_filter(year >= 2018,                    # since 2018
+               cl22 == "New South Wales",       # in New South Wales
+               dataResourceName == "FrogID") |> # by FrogID
+  atlas_counts()                                # Download record counts
+```
+
+Now we can use `atlas_occurrences()` to download occurrence records, which returns each observation's location coordinates and event date.
+
+You will need to first provide a [registered email with the ALA](https://auth.ala.org.au/userdetails/registration/createAccount) using `galah_config()` before retrieving records.
+
+```{r}
+#| echo: false
+#| eval: true
+galah_config(email = "amanda.buyan@csiro.au", verbose = FALSE)
+```
+
+```{r}
+#| echo: true
+#| eval: false
+galah_config(email = "your-email-here")
+```
+
+```{r}
+#| warning: false
+#| message: false
+frogs <- galah_call() |>
+  galah_identify("Litoria peronii") |>
+  galah_filter(year >= 2018,
+               cl22 == "New South Wales",
+               dataResourceName == "FrogID") |>
+  atlas_occurrences()
+frogs
+```
+
+## Make a map
+
+It's time to make our map!  
+
+In order to draw our map of New South Wales, we'll download a shapefile of the latest [state and territory boundaries from the Australian Bureau of Statistics](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files). Download the "States and Territories - 2021 - Shapefile" zip file, and save the zip file in the same folder you are coding in.
+
+Let's load our States and Territories shapefile with `read_file()` and save it as `states`. Then, we will filter the shapefile to New South Wales and quickly plot it to check it plots correctly (specifying that the border is grey, and the inside is white).
+
+```{r}
+#| eval: false
+#| echo: true
+#| warning: false
+#| message: false
+# Load Australian state and territory boundaries
+states <- st_read(here("STE_2021_AUST_GDA94.shp"),
+                  quiet = TRUE)
+
+# Filter to New South Wales
+nsw <- states |> 
+  filter(STE_NAME21 == "New South Wales")
+
+# Plot
+ggplot() +
+  geom_sf(data = nsw,
+          colour = "grey60",
+          fill = "white")
+```
+
+```{r}
+#| eval: true
+#| echo: false
+#| warning: false
+#| message: false
+# Load Australian state and territory boundaries
+## Note: For rendering, you can find this data in the Science & Decision Support team folder in Data/ala-labs
+states <- st_read(here("posts",
+                       "data",
+                       "Australia_state_boundaries",
+                       "STE_2021_AUST_GDA94.shp"),
+                  quiet = TRUE)
+
+# Filter to New South Wales
+nsw <- states |> 
+  filter(STE_NAME21 == "New South Wales")
+
+# Plot
+ggplot() +
+  geom_sf(data = nsw,
+          colour = "grey60",
+          fill = "white")
+```
+
+We will also set the Coordinate References System (CRS), which determines how our points are oriented on the spherical globe when drawn as a flat surface. The projection of ALA data is EPSG:4326 (also known as "WGS84"). Setting the CRS allows us to make sure the points of our data align correctly with our shapefile.
+
+```{r}
+nsw <- nsw |>
+  st_transform(crs = st_crs(4326))
+```
+
+Now, we will add species observations to our map. First, we will plot our reprojected shapefile. Then, we will overlay a scatter plot using `decimalLongitude` as your x axis and `decimalLatitude` as your y axis. We'll set the `colour` and adjust the `alpha` to make our points partially transparent.
+
+```{r}
+ggplot() +
+  geom_sf(data = nsw,
+          colour = "grey60",
+          fill = "white") +
+  geom_point(data = frogs,
+             aes(x = decimalLongitude,
+                 y = decimalLatitude),
+             colour = "#6fab3f",
+             alpha = 0.5,
+             size = 1.1)
+```
+
+For some final touches (to make the map prettier), we can add a centred title and add a minimal theme.
+
+```{r}
+#| column: screen-inset
+#| fig-align: center
+#| fig-height: 9
+#| fig-width: 10
+#| warning: false
+#| message: false
+
+ggplot() +
+  geom_sf(data = nsw,
+          colour = "grey60",
+          fill = "white") +
+  geom_point(data = frogs,
+             mapping = aes(x = decimalLongitude,
+                           y = decimalLatitude),
+             colour = "#6fab3f",
+             alpha = 0.5,
+             size = 1.1) +
+  labs(title = "Peron's tree frog",
+       subtitle = "FrogID observations in New South Wales since 2018") +
+  theme_void() + 
+  theme(
+    plot.title = element_text(hjust = 0.5),   # horizontally centre
+    plot.subtitle = element_text(hjust = 0.5) # horizontally centre
+  )
+```
+
+To save your plot in your current folder, you can use:
+
+```{r}
+#| eval: false
+ggsave("map_perons-tree-frog.png",
+       dpi = 320)
+```
+
+## Final thoughts
+
+We hope this post has helped make the basic steps of making a map simple and easy to understand. For more advanced mapping in R, check out our ALA Labs articles on [exploring dingo observations](https://labs.ala.org.au/posts/2023-05-16_dingoes/post.html) and [how to make a choropleth map with multiple colour scales](https://labs.ala.org.au/posts/2022-05-23-ggnewscale/post.html).
+
+
+<details><summary style = "color: #E06E53;">Expand for session info</summary>
+
+```{r, echo = FALSE}
+library(sessioninfo)
+# save the session info as an object
+pkg_sesh <- session_info(pkgs = "attached")
+# print it out
+pkg_sesh
+```
+
+</details>
+
+:::
