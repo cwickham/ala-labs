@@ -17,7 +17,9 @@ categories:
   - Chordata
   - Anura
   - Maps
-image: tbd
+  - Python
+  - R
+image: map_tree-frog.png
 draft: true
 freeze: true
 engine: knitr
@@ -208,7 +210,7 @@ We can also search for a value using `search_values()`, which might be handy to 
 #| eval: false
 #| echo: true
 #| warning: false
-galah.search_values(field="dataResourceName")
+galah.search_values(field="dataResourceName", value="frogid")
 ```
 
 ```{python}
@@ -223,9 +225,25 @@ galah.search_values(field="dataResourceName", value="frogid")
 
 ### Download observations
 
-Now we are ready to build our query to download observations of Peron's tree frog since 2018 in New South Wales by FrogID. 
+Now we are ready to build our query to download observations of Peron's tree frog in New South Wales since 2018 recorded by FrogID. 
 
-First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidentally massive download)! 
+For those unfamiliar with Australian geography, New South Wales is this one:
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+library(ggplot2)
+library(dplyr)
+
+ggplot() + 
+  geom_sf(data = ozmaps::ozmap_states, fill = "transparent") + 
+  geom_sf(data = ozmaps::ozmap_states |>
+    dplyr::filter(NAME == "New South Wales"), fill = "#E06E53") + 
+    theme_void()
+```
+
+First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidental massive download)! 
 
 We'll use `atlas_counts()` to download record counts, specifying the taxon using the `taxa` argument, and narrowing the year range, state/territory and data resource using the `filters` argument.
 
@@ -395,8 +413,10 @@ First, let's load some packages.
 #| warning: false
 library(galah)
 library(ggplot2)
+library(dplyr)
 library(sf)
 library(here)
+library(showtext)
 ```
 
 ```{r}
@@ -447,9 +467,25 @@ search_all(fields, "dataResourceName") |>
 
 ### Download observations
 
-Now we are ready to build our query to download observations of Peron's tree frog since 2018 in New South Wales by FrogID. 
+Now we are ready to build our query to download observations of Peron's tree frog in New South Wales since 2018 recorded by FrogID. 
 
-First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidentally massive download)! 
+For those unfamiliar with Australian geography, New South Wales is this one:
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+library(ggplot2)
+library(dplyr)
+
+ggplot() + 
+  geom_sf(data = ozmaps::ozmap_states, fill = "transparent") + 
+  geom_sf(data = ozmaps::ozmap_states |>
+    dplyr::filter(NAME == "New South Wales"), fill = "#E06E53") + 
+    theme_void()
+```
+
+First, let's find the number of records that match our query. This is good practice before downloading occurrence records because you can check exactly how many records you are intending to download (and avoid an accidental massive download)! 
 
 We'll use `atlas_counts()` to download record counts, specifying the taxon using `galah_identify()`, and narrowing the year range, state/territory and data resource using `galah_filter()`.
 
@@ -566,6 +602,8 @@ ggplot() +
 
 For some final touches (to make the map prettier), we can add a centred title and add a minimal theme.
 
+We'll add our own custom text using the showtext package, loading a custom font with `font_add_google()`
+
 ```{r}
 #| column: screen-inset
 #| fig-align: center
@@ -573,6 +611,10 @@ For some final touches (to make the map prettier), we can add a centred title an
 #| fig-width: 10
 #| warning: false
 #| message: false
+
+# Add font
+font_add_google("Roboto")
+showtext_auto(enable = TRUE)
 
 ggplot() +
   geom_sf(data = nsw,
@@ -588,8 +630,12 @@ ggplot() +
        subtitle = "FrogID observations in New South Wales since 2018") +
   theme_void() + 
   theme(
-    plot.title = element_text(hjust = 0.5),   # horizontally centre
-    plot.subtitle = element_text(hjust = 0.5) # horizontally centre
+    plot.title = element_text(hjust = 0.5,          # horizontally centre
+                              family = "Roboto",    # add font
+                              size = 31),           # change font size
+    plot.subtitle = element_text(hjust = 0.5,       # horizontally centre
+                                 family = "Roboto", # add font
+                                 size = 25)         # change font size
   )
 ```
 
@@ -597,7 +643,13 @@ To save your plot in your current folder, you can use:
 
 ```{r}
 #| eval: false
-ggsave("map_perons-tree-frog.png",
+# set dpi for text
+showtext_opts(dpi = 320)
+
+# save
+ggsave(here("map_perons-tree-frog.png"),
+       height = 9, width = 10,
+       unit = "in",
        dpi = 320)
 ```
 
