@@ -16,9 +16,8 @@ categories:
   - Animalia
   - Chordata
   - Anura
-  - Maps
+  - Buffers
   - Python
-  - R
 image: map_tree-frog.png
 draft: true
 freeze: true
