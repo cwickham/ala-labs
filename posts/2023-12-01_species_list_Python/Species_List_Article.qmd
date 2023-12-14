@@ -1,5 +1,5 @@
 ---
-title: "Make a species list for a Local Government Area (LGA)"
+title: "Make a species list for a Local Government Area (LGA) in Python and R"
 description: |
   Knowing what species have been observed in a local area is an important, regular task for ecosystem management and environmental impact assessment. Here we show how to use `galah-python` to make a species list using layers available in `galah-python` or using a shapefile, and how to cross-reference this list with threatened species lists determine if threatened species are in your LGA.
 author:
@@ -13,10 +13,9 @@ toc-location: left
 toc-depth: 2
 categories:
   - Eukaryota
-  - Animalia
-  - Chordata
-  - Anura
-  - Maps
+  - Summaries
+  - Python
+  - R
 image: tbd
 draft: true
 freeze: false
@@ -70,11 +69,11 @@ knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustrali
 
 <!------------------------ Post starts here ------------------------>
 
-Knowing what species inhabit an area is important for conservation and ecosystem management. It is also useful to know how common or rare each species might be.
+Knowing what species inhabit an area is important for conservation and ecosystem management. It is also useful to know how common or rare each species might be, or how many species are threatened or endangered in a given area.
 
-To accomplish this, species lists are a frequent tool to assess what species are in a given area for monitoring and environmental impact assessments. Often, these lists are asked to be produced for specific regions like Local Government Areas (LGAs) or specific monitoring locations within a region.
+Species lists are a common tool to find what species are in a given area for monitoring and environmental impact assessments. Often, these lists are asked to be produced for specific regions like Local Government Areas (LGAs) or specific monitoring locations within a region.
 
-In this post, we show how to use `galah-python` and `geopandas` to generate a species list for an Local Government Area—the Yass Valley—over the past year.
+In this post, we will show you how to generate a species list for an Local Government Area—the Yass Valley—over the past year in either Python or R.
 
 # Make a species list
 
@@ -101,37 +100,37 @@ First, let's import galah.
 import galah
 ```
 
-## galah-python fields
+## Use an existing spatial field
 
 ### Search for fields
 
-Let's find which fields and layers exist within `galah-python` for us to use to narrow our query to a specific LGA region and year.
+Let's find which fields and layers exist within `galah-python` to narrow our query to a specific LGA region and year.
 
-We can use the `search_all()` function to search for many types of information in `galah-python`. Let's use it to look up what `field`s contain the word "year". Our search returns several options, though the best option seems to be field `id` `"year"`.
+We can use the `search_all()` function to search for many types of information in `galah-python`. Let's use it to look up what `field`s contain the word "year". Our search returns several options, though the best option seems to be the field `id` `"year"`.
 
 ```{python}
 galah.search_all(fields="year")
 ```
 
-If we want to double check whether a given field contains information we are interested in, we can use the `show_values()` to see what categories a specified `field` contains.
+To double check whether a given field contains the information we are interested in, we can use `show_values()` to see what values are *within* the `"year"`.
 
 ```{python}
 galah.show_values(field="year")
 ```
 
-Now let's use the same process to find whether any fields contain spatial data of Local Government Areas.
+Let's use the same process to search for a `field` containing spatial data of Local Government Areas. Our search returns a few options.
 
 ```{python}
 galah.search_all(fields="Local Government Areas")
 ```
 
-There are several options, though `cl10923` seems to be contain the most recent data (from 2018). Let's check what this `field` contains.
+The field `cl10923` seems to be contain the most recent data from 2018. Let's check what this values this `field` contains.
 
 ```{python}
 galah.show_values(field="cl10923")
 ```
 
-Since there are so many values in this layer, we can check whether it contains Yass Valley specifically with `search_values()`.
+We can use search for the value "Yass Valley" specifically with `search_values()`.
 
 ```{python}
 galah.search_values(field="cl10923", value = "YASS VALLEY")
@@ -147,9 +146,9 @@ Each spatial layer has a two letter code, along with a number to identify it.  T
 :::
 
 
-### Make species list
+### Download data
 
-Now we can use the `year` and `cl10923` fields to build a query to get a list of species that were observed in Yass Valley over 2023. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query.
+Now we can build a query to return species observed in Yass Valley over 2023. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query.
 
 ```{python}
 galah.atlas_species(filters=["year=2023","cl10923=YASS VALLEY COUNCIL"])
@@ -172,61 +171,57 @@ species_yass.to_csv("Species_List_Yass_Valley_Counts_ALA_Spatial_Filter.csv")
 
 ## Shapefile
 
+### Download shapefile
+
 Let's download the latest Local Government Areas data from the [Australian Bureau of Statistics Digital Boundary files page](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files).  Find "Local Government Areas - 2023 - Shapefile" and click "Download ZIP". Save the zip folder in your current directory and unzip it.
 
 We'll use `read_file()` from `geopandas` to load our shapefile.
 
 ```{python}
+#| eval: false
+#| echo: true
 import geopandas as gpd
 LGAs_2023 = gpd.read_file("LGA_2023_AUST_GDA2020.shp")
 LGAs_2023
 ```
 
-Now let's set Coordinate Reference System (CRS) of our shapefile.  A CRS is a method of representing coordinates of the spherical earth onto a flat, two-dimensional map. ALA observations are projected using  [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System) (the standard used in cartography and GPS), also known as [EPSG](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset):4326. 
+```{python}
+#| echo: false
+#| eval: true
+import geopandas as gpd
 
-`geopandas` has a handy CRS-setting function, `to_crs()`. 
+# Load LGA boundaries
+## Note: For rendering, you can find this data in the Science & Decision Support team folder in Data/ala-labs
+LGAs_2023 = gpd.read_file("../data/LGA_2023/LGA_2023_AUST_GDA2020.shp")
+LGAs_2023
+```
+
+Now let's use `to_crs()` to set the Coordinate Reference System (CRS) of our shapefile.  A CRS refers to how coordinates on the spherical earth are oriented onto a flat, two-dimensional map. ALA observations are projected using [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System) (the standard used in cartography and GPS), also known as [EPSG](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset):4326. 
 
 ```{python}
 LGAs_2023 = LGAs_2023.to_crs(4326)
 LGAs_2023.plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,5))
 ```
 
-We'll filter our shapefile to only Yass Valley. The column `LGA_NAME23` appears to contain names we can use to filter our `Dataframe`, and the column `geometry` contains information to draw our LGA shape.  We can filter to return only the row its `LGA_NAME23` equal to `Yass Valley`.
+We'll filter our shapefile to only Yass Valley. 
+
+The column `LGA_NAME23` appears to contain names we can use to filter our `Dataframe`. Let's filter `LGA_NAME23` to return only the row containing `Yass Valley`.
 
 ```{python}
-LGAs_2023[LGAs_2023['LGA_NAME23'] == "Yass Valley"]
-```
-
-We can select the geometry itself by doing two things.  The first is selecting only the `geometry` column by adding its name within brackets (`[]`) at end of the dataframe.
-
-```{python}
-yass_valley = LGAs_2023[LGAs_2023['LGA_NAME23'] == "Yass Valley"]["geometry"]
+yass_valley = LGAs_2023[LGAs_2023['LGA_NAME23'] == "Yass Valley"]
 yass_valley
 ```
 
-The second thing is choosing the shape file itself.  To do this we need to specify the row number that the yass valley geometry occurs.  From the codeblock above, we see that it is row `127`.  To specify the row number, we need to add `127` in brackets at the end of our selection.
+The column `geometry` contains information to draw our LGA shape. Let's select just this column.
 
 ```{python}
-yass_valley_geometry = LGAs_2023[LGAs_2023['LGA_NAME23'] == "Yass Valley"]["geometry"][127]
-yass_valley_geometry
+yass_valley["geometry"]
 ```
 
-Now that we have the polygon itself stored as `yass_valley_geometry`, all we need to do is pass it to the `polygon` argument of `atlas_species()`.
+Now that we have the polygon stored as `yass_valley_geometry`, we can pass it to the `polygon` argument of `atlas_species()`. We can also narrow our query to only 2023 observations by adding `year` to `filters`, and add the observation count of each species by addint `counts=True`.
 
 ```{python}
-galah.atlas_species(polygon=yass_valley_geometry)
-```
-
-We can also narrow our query to only 2023 observations by adding `year` to `filters`.
-
-```{python}
-galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023")
-```
-
-To add the observation count for each species, add `counts=True`.
-
-```{python}
-species_yass = galah.atlas_species(polygon=yass_valley_geometry,filters="year=2023",counts=True)
+species_yass = galah.atlas_species(polygon=yass_valley["geometry"],filters="year=2023",counts=True)
 species_yass
 ```
 
@@ -262,14 +257,6 @@ To save this species list as a csv, we can use `to_csv()` from the `pandas dataf
 #| eval: false
 threatened_species_yass.to_csv("Threatened_Species_List_Yass_Valley_Counts_ALA_Spatial_Filter.csv")
 ```
-
-::: {.callout-note}
-Each data resource has a two letter code, along with a number to identify it.  The abbreviations are as follows:
-
-  * `dr` = data resource 
-  * `650` = number associated with the data resource in the atlas
-
-:::
 
 # Final thoughts
 
