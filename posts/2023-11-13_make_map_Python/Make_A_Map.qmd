@@ -345,18 +345,48 @@ plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", a
 
 For some final touches (to make the map prettier), we can add a title and remove the border.
 
+We’ll add our own custom font [Roboto](<https://fonts.google.com/specimen/Roboto>) and load it with the `matplotlib` library.  
+
+```{python}
+#| warning: false
+#| message: false
+import matplotlib as mpl
+from matplotlib import font_manager
+font_files = font_manager.findSystemFonts(fontpaths="Roboto/")
+for ff in font_files:
+  font_manager.fontManager.addfont(ff)
+```
+
+For further information or troubleshooting tips for installing Roboto on your computer, [this post](https://python-graph-gallery.com/custom-fonts-in-matplotlib/) is an excellent guide, as well as the [matplotlib.font_manager documentation](https://matplotlib.org/stable/api/font_manager_api.html).
+
+```{python}
+#| eval: false
+#| echo: true
+#| warning: false
+#| message: false
+states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
+plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", alpha = 0.5, label = "Litoria peronii")
+plt.suptitle("Peron's tree frog",fontsize=36,font='Roboto')
+plt.title("FrogID observations in New South Wales since 2018",fontsize=28,font='Roboto')
+plt.axis('off')
+```
+
 ```{python}
 #| column: screen-inset
 #| fig-align: center
 #| fig-height: 9
 #| fig-width: 10
+#| echo: false
+#| eval: true
 #| warning: false
 #| message: false
-
-states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,6))
+plt.rcParams["font.family"] = "Roboto"
+states[states["STE_NAME21"] == "New South Wales"].plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (24,12))
 plt.scatter(frogs['decimalLongitude'],frogs['decimalLatitude'], c = "#6fab3f", alpha = 0.5, label = "Litoria peronii")
-plt.title("Peron's tree frog\nFrogID observations in New South Wales since 2018",fontsize=19)
+plt.suptitle("Peron's tree frog",fontsize=40) #,font='Roboto')
+plt.title("FrogID observations in New South Wales since 2018",fontsize=30) #,font="Roboto")
 plt.axis('off')
+plt.show()
 ```
 
 To save your plot in your current folder, you can use:
