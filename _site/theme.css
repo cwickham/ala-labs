@@ -509,3 +509,7 @@ img.rounded {
     color: #fff;
     background-color: var(--secondary-orange);
 }
+
+.nav-link:hover {
+  color: #FFC557;
+}
