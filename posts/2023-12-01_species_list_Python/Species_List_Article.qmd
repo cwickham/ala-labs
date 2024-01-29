@@ -71,7 +71,7 @@ knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustrali
 
 Knowing what species inhabit an area is important for conservation and ecosystem management. In particular, it can help us find how many known species are in a given area, whether each species is common or rare and whether any species are threatened or endangered.
 
-In this post, we will show you how to generate a species list for a Local Government Area (LGA)—the Yass Valley—and check whether any species are listed as threatened using either Python or R. This is a common task for environmental impact assessment.
+In this post, we will use the `galah-python`, `geopandas`, `matplotlib` and `pywaffle` packages to show you how to visualise the number of threatened and sensitive species in the Yass Valley in 2023. 
 
 # Make a species list
 
@@ -82,7 +82,9 @@ There are two ways to narrow a query to return information for a specific region
   
 The method you choose depends on whether the region you wish to return species for is already within `galah-python`, or whether you require a list for a more specific area defined by a shapefile.
 
-Let's go through each of the methods in turn to return a list of species in the Yass Valley in 2023.
+::: {.panel-tabset .nav-pills}
+
+# fields
 
 ```{python}
 #| echo: false
@@ -92,55 +94,28 @@ pd.set_option('display.max_columns', None)
 pd.set_option('expand_frame_repr', False)
 ```
 
-First, let's import some of the packages we will be using.
+## Find LGAs in the ALA
+
+To find which fields and layers exist within `galah-python` to narrow our query, we can use the `search_all()` function. We will be using the field `year` for 2023, but need to find what data the ALA has on LGAs.
 
 ```{python}
 import galah
 import geopandas as gpd
-```
-
-## Use a field in galah
-
-### Search for fields
-
-To find which fields and layers exist within `galah-python` to narrow our query, we can use the `search_all()` function. Let's use it to look up what `field`s contain the word "year". Our search returns several options, though the best option seems to be the first option `year`.
-
-```{python}
-galah.search_all(fields="year")
-```
-
-To double check whether a given field contains the information we are interested in, we can use `show_values()` to see what values are *within* field `year`.
-
-```{python}
-galah.show_values(field="year")
-```
-
-Let's use the same process to search for a `field` containing spatial data of Local Government Areas. Our search returns a few options.
-
-```{python}
 galah.search_all(fields="Local Government Areas")
 ```
 
-The field `cl10923`[^1] seems to be contain the most recent data from 2018. Let's check what this values this `field` contains.
+The field `cl10923`[^1] is the most recent data (from 2018). Since we know there are a lot 
+of LGAs, we can do a text search to see what the Yass Valley is called in the shapefile.
 
 [^1]: Each spatial layer has a two letter code, along with a number to identify it. The abbreviations are as follows:
-
   * `cl` = contextual layer (i.e. boundaries of LGAs, Indigenous Protected Areas, States/Territories etc.)  
   * `10923` = number associated with the spatial layer in the atlas
-
-```{python}
-galah.show_values(field="cl10923")
-```
-
-We can use search for the value "Yass Valley" specifically with `search_values()`.
 
 ```{python}
 galah.search_values(field="cl10923", value = "YASS VALLEY")
 ```
 
-
-
-### Download data
+## Download data
 
 We can now build our query. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query. To add the observation count for each species, add `counts=True`.
 
@@ -148,14 +123,13 @@ We can now build our query. We can use `atlas_species()` to return a species lis
 species_yass = galah.atlas_species(
   filters=["year=2023","cl10923=YASS VALLEY COUNCIL"],
   counts=True
-  )
+)
 species_yass
 ```
 
+# Shapefile
 
-## Use a shapefile
-
-### Download shapefile
+## Download shapefile
 
 To retrieve the spatial outline of Yass Valley, let's download the latest Local Government Areas data from the [Australian Bureau of Statistics Digital Boundary files page](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files). Find "Local Government Areas - 2023 - Shapefile" and click "Download ZIP". Save the zip folder in your current directory and unzip it.
 
@@ -165,7 +139,6 @@ We'll use `read_file()` from `geopandas` to load our shapefile.
 #| eval: false
 #| echo: true
 LGAs_2023 = gpd.read_file("LGA_2023_AUST_GDA2020.shp")
-LGAs_2023
 ```
 
 ```{python}
@@ -174,7 +147,6 @@ LGAs_2023
 # Load LGA boundaries
 ## Note: For rendering, you can find this data in the Science & Decision Support team folder in Data/ala-labs
 LGAs_2023 = gpd.read_file("../data/LGA_2023/LGA_2023_AUST_GDA2020.shp")
-LGAs_2023
 ```
 
 Now let's use `to_crs()` to set the Coordinate Reference System (CRS) of our shapefile to [EPSG](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset):4326 (the standard used in cartography and GPS, also known as [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System)) so that it matches the projection of our data from the ALA [^2]. 
@@ -183,40 +155,45 @@ Now let's use `to_crs()` to set the Coordinate Reference System (CRS) of our sha
 
 ```{python}
 LGAs_2023 = LGAs_2023.to_crs(4326)
-LGAs_2023.plot(edgecolor = "#5A5A5A", linewidth = 0.5, facecolor = "white", figsize = (12,5))
 ```
 
 Next we can filter our shapefile to only Yass Valley. The column `LGA_NAME23` contains area names, and we can filter our `Dataframe` to only rows where `LGA_NAME23` is equal to `Yass Valley`.
 
 ```{python}
 yass_valley = LGAs_2023[LGAs_2023['LGA_NAME23'] == "Yass Valley"]
-yass_valley
+yass_valley["geometry"]
 ```
 
-Let's select just the `geometry` column which contains information to draw our LGA shape and assign it to `yass_geometry`.
+## Download data
 
-```{python}
-yass_geometry = yass_valley["geometry"]
-yass_geometry
-```
-
-### Download data
-
-Now that `yass_geometry` contains our LGA shape, we can now build our query. We can use `atlas_species()` to return a species list, and pass our shape to the `polygon` argument of `atlas_species()` to filter our query to within Yass Valley. We can add the year to `filters` and add the observation count for each species with `counts=True`.
+Now that `yass_geometry` contains our LGA shape, we can now build our query. We will pass our shape to the `polygon` argument of `atlas_species()`, add the year to `filters` and add the observation count for each species with `counts=True`.
 
 ```{python}
 species_yass = galah.atlas_species(
-  polygon=yass_geometry,
+  polygon=yass_valley["geometry"][127],
   filters="year=2023",
   counts=True
   )
 species_yass
 ```
+:::
 
+# Filter species by list
 
-## Compare with threatened species list
+Many users may want to filter this species list down to threatened and sensitive species. You 
+can do this one of two ways: 
 
-`galah-python` contains many lists, including national and regional threatened species lists. To determine whether any species are categorised as threatened or sensitive species on our Yass Valley species list in the state of New South Wales, let's use `search_all()` again, this time using the `lists` argument to find any lists that match `New South Wales`.
+  * ALA Lists that are pre-loaded
+  * Your own list
+
+One way to match our lists is to match species names in the threatened species list to names in our Yass Valley list.  However, this can be fiddly if there are text errors, added spaces or discrepancies in naming conventions.  Luckily, `galah-python` can use a list as a filter, restricting the result to only species names that match the specified list ID.  In addition, you 
+can also match these species against your own list.
+
+::: {.panel-tabset .nav-pills}
+
+# ALA Lists
+
+To get the sensitive let's use `search_all()` again, this time using the `lists` argument to find any lists that match `New South Wales`.
 
 ```{python}
 galah.search_all(lists="New South Wales")
@@ -228,32 +205,242 @@ Two lists are returned, and both appear relevant. The additional columns returne
 galah.search_all(lists="New South Wales")[["dataResourceUid", "listType", "isAuthoritative", "isThreatened"]]
 ```
 
-**Not everyone will want to match a list that exists within galah. It's worth showing people how to do a text match between names in case they have their own list**
-
-One way to match our lists is to match species names in the threatened species list to names in our Yass Valley list.
-
-[text match]
-
-However, this can be fiddly if there are text errors, added spaces or discrepancies in naming conventions.
-
-Luckily, `galah-python` can use a list as a filter, restricting the result to only species names that match the specified list ID.
-
-In this case, we can use list ID `dr650` to narrow our species list to only those also on the New South Wales Conservation List by adding `species_list_uid=dr650` to `filters`. Our query shows that there were xxx threatened species in Yass Valley in 2023.
+In this case, we can use list ID `dr650` to narrow our species list to only those also on the New South Wales Conservation List by adding `dataResourceUid=dr650` to `filters`. Our query shows that there were 21 threatened species in Yass Valley in 2023.
 
 ```{python}
 yass_threatened = galah.atlas_species(
-  polygon=yass_geometry,
-  filters=["year=2023", "species_list_uid=dr650"],
+  polygon=yass_valley["geometry"][127],
+  filters=["year=2023", "dataResourceUid=dr650"],
   counts=True
   )
 yass_threatened
 ```
 
-To save this species list as a csv, we can use `to_csv()` from the `pandas dataframe` package.
+If we want to get only the sensitive species list, we can instead use the list 
+ID `dr487`.
+
+```{python}
+yass_sensitive = galah.atlas_species(
+  polygon=yass_valley["geometry"][127],
+  filters=["year=2023", "dataResourceUid=dr487"],
+  counts=True
+  )
+yass_sensitive
+```
+
+# Own List
+
+To use our example threatened list, download it here: {{< downloadthis ../data/example_TSL.csv >}}
+To use our example sensitive list, download it here: {{< downloadthis ../data/example_SSL.csv >}}
+
+First, let's read in the list and see what the list looks like.
 
 ```{python}
 #| eval: false
-yass_threatened.to_csv("yass_threatened_species_list.csv")
+#| echo: true
+import pandas as pd
+threatened_list = pd.read_csv("example_TSL.csv")
+sensitive_list = pd.read_csv("example_SSL.csv")
+```
+
+For this example, we have included only the species that were displayed on the other tab.  However, this exercise can be done with any list.
+
+```{python}
+#| eval: true
+#| echo: false
+import pandas as pd
+threatened_list = pd.read_csv("../data/example_TSL.csv")
+sensitive_list = pd.read_csv("../data/example_SSL.csv")
+```
+
+Now, we will use the `isin()` function in `pandas` to select only the names in `species_yass` that 
+are on our example list.
+
+```{python}
+yass_threatened = species_yass[species_yass['Species Name'].isin(list(threatened_list['species name']))].reset_index(drop=True)
+yass_threatened
+```
+
+We can now do the same thing for the sensitive species list.
+```{python}
+yass_sensitive =  species_yass[species_yass['Species Name'].isin(list(sensitive_list['species name']))].reset_index(drop=True)
+yass_sensitive
+```
+
+:::
+
+# Plot species
+
+Now that we've got the list of species, it's time to visualise it on a waffle chart.  For this part of the post, you will need `pywaffle`.  We can use the data frame of threatened species with counts you have as input for this plot.
+
+```{python}
+#| code-fold: true
+#| echo: true
+#| eval: false
+
+import matplotlib.pyplot as plt 
+from pywaffle import Waffle 
+import numpy as np
+
+fig, (ax1,ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10,4))
+fig.subplots_adjust(left=0.2,right=0.8) # try this
+
+# Modify existing axis
+ax1.set_aspect(aspect="equal")
+ax2.set_aspect(aspect="equal")
+
+# make sure there are unique colours for each species
+# "#D81B60",
+colors = ["#004D40","#1E88E5","#F7E9C3"]
+remaining_species = species_yass.shape[0] - (yass_sensitive.shape[0] + yass_threatened.shape[0])
+values = [yass_sensitive.shape[0],yass_threatened.shape[0],remaining_species]
+
+# separate into birds, mammals, reptiles, plants and other
+birds = yass_sensitive[yass_sensitive["Class"] == "Aves"].shape[0] + yass_threatened[yass_threatened["Class"] == "Aves"].shape[0]
+mammals = yass_sensitive[yass_sensitive["Class"] == "Mammalia"].shape[0] + yass_threatened[yass_threatened["Class"] == "Mammalia"].shape[0]
+reptiles = yass_sensitive[yass_sensitive["Class"] == "Reptilia"].shape[0] + yass_threatened[yass_threatened["Class"] == "Reptilia"].shape[0]
+plants = yass_sensitive[yass_sensitive["Kingdom"] == "Plantae"].shape[0] + yass_threatened[yass_threatened["Kingdom"] == "Plantae"].shape[0]
+other = (yass_sensitive.shape[0] + yass_threatened.shape[0]) - (birds + mammals + reptiles + plants)
+
+# get counts and add them to labels
+group_count = [
+  birds,
+  mammals,
+  reptiles,
+  plants,
+  other,
+]
+
+# make the labels with number of unique species in label
+group_labels = ["Birds ({})".format(birds),
+                "Mammals ({})".format(mammals),
+                "Reptiles ({})".format(reptiles),
+                "Plants ({})".format(plants),
+                "Other ({})".format(other)]
+
+# add title over all plots
+plt.suptitle("Threatened/Sensitive Species in Yass Valley in 2023",fontsize=20)
+
+# Make threatened/sensitive waffle chart
+Waffle.make_waffle(
+    ax=ax1,
+    rows=5,
+    values=[yass_sensitive.shape[0],yass_threatened.shape[0]], 
+    colors = ["#004D40","#1E88E5"],
+    legend={
+        'labels': ["Sensitive ({})".format(yass_sensitive.shape[0]),"Threatened ({})".format(yass_threatened.shape[0])],
+        'loc': 'upper right',
+        'bbox_to_anchor': (0, 1.0),
+        'ncol': 1,
+        'framealpha': 0,
+        'fontsize': 10
+    }
+)
+
+# Make types breakdown waffle chart
+Waffle.make_waffle(
+    ax=ax2,
+    rows=5,
+    values=group_count, 
+    colors = ["#EC588E","#1E88E5","#F7E9C3","#24DCBD","#1F279A"],
+    legend={
+        'labels': group_labels,
+        'loc': 'upper right',
+        'bbox_to_anchor': (1.6, 1.02),
+        'ncol': 1,
+        'framealpha': 0,
+        'fontsize': 10
+    }
+)
+```
+
+```{python}
+#| column: screen-inset
+#| fig-align: center
+#| fig-height: 9
+#| fig-width: 10
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+import matplotlib.pyplot as plt 
+from pywaffle import Waffle 
+import numpy as np
+
+# initialise figure
+fig, (ax1,ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10,4))
+fig.subplots_adjust(left=0.2,right=0.8) # try this
+
+# Modify existing axis
+ax1.set_aspect(aspect="equal")
+ax2.set_aspect(aspect="equal")
+
+# make sure there are unique colours for each species
+# "#D81B60",
+colors = ["#004D40","#1E88E5","#F7E9C3"]
+remaining_species = species_yass.shape[0] - (yass_sensitive.shape[0] + yass_threatened.shape[0])
+values = [yass_sensitive.shape[0],yass_threatened.shape[0],remaining_species]
+
+# separate into birds, mammals, reptiles, plants and other
+birds = yass_sensitive[yass_sensitive["Class"] == "Aves"].shape[0] + yass_threatened[yass_threatened["Class"] == "Aves"].shape[0]
+mammals = yass_sensitive[yass_sensitive["Class"] == "Mammalia"].shape[0] + yass_threatened[yass_threatened["Class"] == "Mammalia"].shape[0]
+reptiles = yass_sensitive[yass_sensitive["Class"] == "Reptilia"].shape[0] + yass_threatened[yass_threatened["Class"] == "Reptilia"].shape[0]
+plants = yass_sensitive[yass_sensitive["Kingdom"] == "Plantae"].shape[0] + yass_threatened[yass_threatened["Kingdom"] == "Plantae"].shape[0]
+other = (yass_sensitive.shape[0] + yass_threatened.shape[0]) - (birds + mammals + reptiles + plants)
+
+# get counts and add them to labels
+group_count = [
+  birds,
+  mammals,
+  reptiles,
+  plants,
+  other,
+]
+
+# make the labels with number of unique species in label
+group_labels = ["Birds ({})".format(birds),
+                "Mammals ({})".format(mammals),
+                "Reptiles ({})".format(reptiles),
+                "Plants ({})".format(plants),
+                "Other ({})".format(other)]
+
+# add title over all plots
+plt.suptitle("Threatened/Sensitive Species in Yass Valley in 2023",fontsize=20)
+
+# Make threatened/sensitive waffle chart
+Waffle.make_waffle(
+    ax=ax1,
+    rows=5,
+    values=[yass_sensitive.shape[0],yass_threatened.shape[0]], 
+    colors = ["#004D40","#1E88E5"],
+    legend={
+        'labels': ["Sensitive ({})".format(yass_sensitive.shape[0]),"Threatened ({})".format(yass_threatened.shape[0])],
+        'loc': 'upper right',
+        'bbox_to_anchor': (0, 1.0),
+        'ncol': 1,
+        'framealpha': 0,
+        'fontsize': 10
+    }
+)
+
+# Make types breakdown waffle chart
+Waffle.make_waffle(
+    ax=ax2,
+    rows=5,
+    values=group_count, 
+    colors = ["#EC588E","#1E88E5","#F7E9C3","#24DCBD","#1F279A"],
+    legend={
+        'labels': group_labels,
+        'loc': 'upper right',
+        'bbox_to_anchor': (1.6, 1.02),
+        'ncol': 1,
+        'framealpha': 0,
+        'fontsize': 10
+    }
+)
+
+plt.show()
 ```
 
 # Final thoughts
