@@ -231,6 +231,7 @@ yass_sensitive
 # Own List
 
 To use our example threatened list, download it here: {{< downloadthis ../data/example_TSL.csv >}}
+
 To use our example sensitive list, download it here: {{< downloadthis ../data/example_SSL.csv >}}
 
 First, let's read in the list and see what the list looks like.
