@@ -513,3 +513,9 @@ img.rounded {
 .nav-link:hover {
   color: #FFC557;
 }
+
+.center-that-figure{
+  margin-left: auto;
+  margin-right: auto;
+  width:50%
+}
