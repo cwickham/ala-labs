@@ -202,15 +202,15 @@ galah.search_all(lists="New South Wales")
 Two lists are returned, and both appear relevant. The additional columns returned by `search_all()` help us determine that although both are authoritative, only one contains threatened species. 
 
 ```{python}
-galah.search_all(lists="New South Wales")[["dataResourceUid", "listType", "isAuthoritative", "isThreatened"]]
+galah.search_all(lists="New South Wales")[["species_list_uid", "listType", "isAuthoritative", "isThreatened"]]
 ```
 
-In this case, we can use list ID `dr650` to narrow our species list to only those also on the New South Wales Conservation List by adding `dataResourceUid=dr650` to `filters`. Our query shows that there were 21 threatened species in Yass Valley in 2023.
+In this case, we can use list ID `dr650` to narrow our species list to only those also on the New South Wales Conservation List by adding `species_list_uid=dr650` to `filters`. Our query shows that there were 21 threatened species in Yass Valley in 2023.
 
 ```{python}
 yass_threatened = galah.atlas_species(
   polygon=yass_valley["geometry"][127],
-  filters=["year=2023", "dataResourceUid=dr650"],
+  filters=["year=2023", "species_list_uid=dr650"],
   counts=True
   )
 yass_threatened
@@ -222,7 +222,7 @@ ID `dr487`.
 ```{python}
 yass_sensitive = galah.atlas_species(
   polygon=yass_valley["geometry"][127],
-  filters=["year=2023", "dataResourceUid=dr487"],
+  filters=["year=2023", "species_list_uid=dr487"],
   counts=True
   )
 yass_sensitive
