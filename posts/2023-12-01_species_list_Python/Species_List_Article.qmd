@@ -1,7 +1,7 @@
 ---
-title: "Make a species list for an area and compare with threatened species"
+title: "Download a species list and cross-reference with conservation status lists"
 description: |
-  Knowing what species have been observed in a local area is an important, regular task for ecosystem management and environmental impact assessment. Here we show how to make a species list with {galah} and how to cross-reference this list with a threatened species list.
+  Knowing what species have been observed in a local area is an important, regular task for ecosystem management and environmental impact assessment. Here we show how to make a species list with {galah-python} and how to cross-reference this list with threatened and sensitive species lists. We also show how to visualise this information as a waffle chart using {pywaffle} & {matplotlib}.
 author:
   - name: "Amanda Buyan"
   - name: "Dax Kellie"
@@ -69,13 +69,13 @@ knitr::include_graphics("https://raw.githubusercontent.com/AtlasOfLivingAustrali
 
 <!------------------------ Post starts here ------------------------>
 
-Knowing what species inhabit an area is important for conservation and ecosystem management. In particular, it can help us find how many known species are in a given area, whether each species is common or rare and whether any species are threatened or endangered.
+Knowing what species inhabit an area is important for conservation and ecosystem management. In particular, it can help us find out how many known species are in a given area, whether each species is common or rare, and whether any species are threatened or endangered.
 
-In this post, we will use the `galah-python`, `geopandas`, `matplotlib` and `pywaffle` packages to show you how to visualise the number of threatened and sensitive species in the Yass Valley in 2023. 
+In this post, we will use the `galah-python`, `geopandas`, `matplotlib` and `pywaffle` packages to show you how to download a list of species within the Yass Valley in 2023, and visualise the number of threatened and sensitive species in the region. 
 
-# Make a species list
+# Download a list of species
 
-There are two ways to narrow a query to return information for a specific region:  
+There are two ways to narrow a download query to return information for a specific region:  
 
   * Using fields available in `galah-python` (downloaded from the ALA)
   * Using a shapefile
@@ -84,7 +84,7 @@ The method you choose depends on whether the region you wish to return species f
 
 ::: {.panel-tabset .nav-pills}
 
-# fields
+# Fields in galah
 
 ```{python}
 #| echo: false
@@ -94,9 +94,9 @@ pd.set_option('display.max_columns', None)
 pd.set_option('expand_frame_repr', False)
 ```
 
-## Find LGAs in the ALA
+## Search for fields in galah
 
-To find which fields and layers exist within `galah-python` to narrow our query, we can use the `search_all()` function. We will be using the field `year` for 2023, but need to find what data the ALA has on LGAs.
+To find which fields and layers exist within `galah-python` to help us narrow our query, we can use the `search_all()` function. Let's do a text search to find what fields contain information on "Local Government Areas".
 
 ```{python}
 import galah
@@ -104,8 +104,13 @@ import geopandas as gpd
 galah.search_all(fields="Local Government Areas")
 ```
 
-The field `cl10923`[^1] is the most recent data (from 2018). Since we know there are a lot 
-of LGAs, we can do a text search to see what the Yass Valley is called in the shapefile.
+The field `cl10923`[^1] appears to contain the most recent data (from 2018). We can preview what values are *within* the field `cl10923` using `show_values()`.
+
+```{python}
+galah.show_values(field="cl10923")
+```
+
+There are lots Local Government Areas! To check that Yass Valley is included, we can do another text search for values that match "YASS VALLEY".
 
 [^1]: Each spatial layer has a two letter code, along with a number to identify it. The abbreviations are as follows:
   * `cl` = contextual layer (i.e. boundaries of LGAs, Indigenous Protected Areas, States/Territories etc.)  
@@ -117,17 +122,17 @@ galah.search_values(field="cl10923", value = "YASS VALLEY")
 
 ## Download data
 
-We can now build our query. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query. To add the observation count for each species, add `counts=True`.
+Using the `field` and `category` above, we can now build our query. We can use `atlas_species()` to return a species list, and use the `filters` argument to narrow our query. To add the observation count for each species, add `counts=True`.
 
 ```{python}
 species_yass = galah.atlas_species(
-  filters=["year=2023","cl10923=YASS VALLEY COUNCIL"],
+  filters=["cl10923=YASS VALLEY COUNCIL", "year=2023"],
   counts=True
 )
 species_yass
 ```
 
-# Shapefile
+# External shapefile
 
 ## Download shapefile
 
@@ -139,6 +144,7 @@ We'll use `read_file()` from `geopandas` to load our shapefile.
 #| eval: false
 #| echo: true
 LGAs_2023 = gpd.read_file("LGA_2023_AUST_GDA2020.shp")
+LGAs_2023
 ```
 
 ```{python}
@@ -147,6 +153,7 @@ LGAs_2023 = gpd.read_file("LGA_2023_AUST_GDA2020.shp")
 # Load LGA boundaries
 ## Note: For rendering, you can find this data in the Science & Decision Support team folder in Data/ala-labs
 LGAs_2023 = gpd.read_file("../data/LGA_2023/LGA_2023_AUST_GDA2020.shp")
+LGAs_2023
 ```
 
 Now let's use `to_crs()` to set the Coordinate Reference System (CRS) of our shapefile to [EPSG](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset):4326 (the standard used in cartography and GPS, also known as [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System)) so that it matches the projection of our data from the ALA [^2]. 
@@ -166,7 +173,7 @@ yass_valley["geometry"]
 
 ## Download data
 
-Now that `yass_geometry` contains our LGA shape, we can now build our query. We will pass our shape to the `polygon` argument of `atlas_species()`, add the year to `filters` and add the observation count for each species with `counts=True`.
+Now that `yass_geometry` contains our LGA shape, we can build our query. We can use `atlas_species()` to return a species list, passing our shape to the `polygon` argument of `atlas_species()` and specifying the year to `filters`. To add the observation count for each species, add `counts=True`.
 
 ```{python}
 species_yass = galah.atlas_species(
@@ -178,28 +185,28 @@ species_yass
 ```
 :::
 
-# Filter species by list
+# Cross-reference with threatened and sensitive species lists
 
-Many users may want to filter this species list down to threatened and sensitive species. You 
-can do this one of two ways: 
+Next we will compare our Yass valley species list with several state-wide conservation status lists of threatened and sensitive species. We can retrieve lists of threatened and sensitive species in one of two ways: 
 
-  * ALA Lists that are pre-loaded
-  * Your own list
+  * Use the lists available in the Atlas of Living Australia
+  * Use your own list
 
-One way to match our lists is to match species names in the threatened species list to names in our Yass Valley list.  However, this can be fiddly if there are text errors, added spaces or discrepancies in naming conventions.  Luckily, `galah-python` can use a list as a filter, restricting the result to only species names that match the specified list ID.  In addition, you 
-can also match these species against your own list.
+Each method both use the same method of matching species names on our Yass Valley list to names on official conservation status lists. However, there is a slightly different workflow between using `galah-python` and using an externally downloaded list. Choose from the options below to use either method.
 
 ::: {.panel-tabset .nav-pills}
 
-# ALA Lists
+# Using lists in the ALA
 
-To get the sensitive let's use `search_all()` again, this time using the `lists` argument to find any lists that match `New South Wales`.
+We can use `galah-python` to access lists that are available on the Atlas of Living Australia to compare to our Yass Valley species list. 
+
+Yass Valley is within the state of New South Wales, so let's do a text search for "New South Wales" to see what state-specific lists are available.
 
 ```{python}
 galah.search_all(lists="New South Wales")
 ```
 
-Two lists are returned, and both appear relevant. The additional columns returned by `search_all()` help us determine that although both are authoritative, only one contains threatened species. 
+Two lists are returned, and both appear relevant. With the help of some additional columns returned by `search_all()`—`listType`, `isAuthoritative` and `isThreatened`—we can learn more about which list suits our needs best. Although both lists are authoritative, only one list (`dr650`) contains threatened species whereas the other `dr487` contains sensitive species. 
 
 ```{python}
 galah.search_all(lists="New South Wales")[["species_list_uid", "listType", "isAuthoritative", "isThreatened"]]
@@ -216,8 +223,7 @@ yass_threatened = galah.atlas_species(
 yass_threatened
 ```
 
-If we want to get only the sensitive species list, we can instead use the list 
-ID `dr487`.
+We can do the same using the New South Wales Sensitive Species (`dr487`). Our query returns 3 species.
 
 ```{python}
 yass_sensitive = galah.atlas_species(
@@ -228,13 +234,17 @@ yass_sensitive = galah.atlas_species(
 yass_sensitive
 ```
 
-# Own List
+# Using external lists
 
-To use our example threatened list, download it here: {{< downloadthis ../data/example_TSL.csv >}}
+We can use our own conservation status lists from an external source to compare to our Yass Valley species list. 
 
-To use our example sensitive list, download it here: {{< downloadthis ../data/example_SSL.csv >}}
+As an example, we are using the the New South Wales Conservation Status List and the New South Wales Sensitive Species List[^3].
 
-First, let's read in the list and see what the list looks like.
+{{< downloadthis ../data/example_TSL.csv label="Download Conservation Status List" icon=database-fill-down type=info class=data-button >}} {{< downloadthis ../data/example_SSL.csv label="Download Sensitive Species List" icon=database-fill-down type=info class=data-button >}}
+
+[^3]: These are the same two lists that you can access in `galah-python`, available from the Atlas of Living Australia. Keep in mind that if you use an external list, data cleaning may be required before matching species names.
+
+First, let's read in both lists and see what each list looks like.
 
 ```{python}
 #| eval: false
@@ -244,8 +254,6 @@ threatened_list = pd.read_csv("example_TSL.csv")
 sensitive_list = pd.read_csv("example_SSL.csv")
 ```
 
-For this example, we have included only the species that were displayed on the other tab.  However, this exercise can be done with any list.
-
 ```{python}
 #| eval: true
 #| echo: false
@@ -254,15 +262,15 @@ threatened_list = pd.read_csv("../data/example_TSL.csv")
 sensitive_list = pd.read_csv("../data/example_SSL.csv")
 ```
 
-Now, we will use the `isin()` function in `pandas` to select only the names in `species_yass` that 
-are on our example list.
+We can use the `isin()` to return the names in `species_yass` that 
+match names in `threatened_list`. We return 21 species.
 
 ```{python}
 yass_threatened = species_yass[species_yass['Species Name'].isin(list(threatened_list['species name']))].reset_index(drop=True)
 yass_threatened
 ```
 
-We can now do the same thing for the sensitive species list.
+We can do the same with `sensitive_list`, which returns 3 species.
 ```{python}
 yass_sensitive =  species_yass[species_yass['Species Name'].isin(list(sensitive_list['species name']))].reset_index(drop=True)
 yass_sensitive
@@ -270,13 +278,13 @@ yass_sensitive
 
 :::
 
-# Plot species
+# Visualise species conservation status
 
-Now that we've got the list of species, it's time to visualise this data on waffle charts.  For this part of the post, you will need `pywaffle`.  We can use the data frames including threatened, sensitive 
-and remaining species to make plots comparing proportion of threatened/sensitive species with 
-non-threatened species, as well as the kinds of species that are threatened/sensitive.
+One useful way to visualise the number of threatened and sensitive species in an area is using a waffle chart. Waffle charts are useful because they can show the total number of species (represented as individual square units) and proportions of different groups (represented by colours). 
 
-For the colours chosen so they would be color-blind friendly, we used [David Nichol's website](https://davidmathlogic.com/colorblind/#%23EAEAD8-%231E88E5-%23F7E9C3-%2324DCBD-%2343006B), and to blend two colours together to get a gradient, we used [the ColorHexa website](https://www.colorhexa.com/43006b-to-eaead8).
+For example, we can visualse the number and proportion of species with different conservation status, along with a taxonomic breakdown of threatened/sensitive species [^4].
+
+[^4]: To create our colour palette, we used [David Nichol's website](https://davidmathlogic.com/colorblind/#%23EAEAD8-%231E88E5-%23F7E9C3-%2324DCBD-%2343006B) to help colours that are colour-blind friendly, [the ColorHexa website](https://www.colorhexa.com/43006b-to-eaead8) create a gradient between 2 colours, and [Coolors](https://coolors.co/) to adjust the colours & shades.
 
 ```{python}
 #| code-fold: true
@@ -318,7 +326,7 @@ Waffle.make_waffle(
     ax=ax1,
     rows=15,
     values=all_species, 
-    colors = ["#43006B","#F5F560","#C5C5C5"],
+    colors = ["#2C0741","#F5CD5F","#E5EBE4"],
     legend={
         'labels': ["Sensitive","Threatened","Remaining"],
         'loc': 'upper left',
@@ -347,7 +355,7 @@ Waffle.make_waffle(
     ax=ax2,
     rows=5,
     values=group_count, 
-    colors = ["#620477","#8e0e71","#b0223d","#d37a3e","#eacc54"],
+    colors = ["#68116A","#A72566","#CA3F51","#DE9568","#F2D0A6"],
     legend={
         'labels': group_labels,
         'loc': 'upper right',
@@ -360,7 +368,7 @@ Waffle.make_waffle(
 ```
 
 ```{python}
-#| column: screen-inset
+#| column: page
 #| fig-align: center
 #| fig-height: 9
 #| fig-width: 10
@@ -368,6 +376,8 @@ Waffle.make_waffle(
 #| eval: true
 #| warning: false
 #| message: false
+#| out-extra: "style=margin-left:auto;margin-right:auto;"
+
 
 # add packages
 import matplotlib 
@@ -404,7 +414,7 @@ Waffle.make_waffle(
     ax=ax1,
     rows=15,
     values=all_species, 
-    colors = ["#43006B","#F5F560","#C5C5C5"],
+    colors = ["#2C0741","#F5CD5F","#E5EBE4"],
     legend={
         'labels': ["Sensitive","Threatened","Remaining"],
         'loc': 'upper left',
@@ -433,7 +443,7 @@ Waffle.make_waffle(
     ax=ax2,
     rows=5,
     values=group_count, 
-    colors = ["#620477","#8e0e71","#b0223d","#d37a3e","#eacc54"],
+    colors = ["#68116A","#A72566","#CA3F51","#DE9568","#F2D0A6"],
     legend={
         'labels': group_labels,
         'loc': 'upper right',
@@ -449,11 +459,9 @@ plt.show()
 
 # Final thoughts
 
-We hope this post has helped you understand how to make a species list use it to find threatened or sensitive species are in an area. It's useful to combine species lists with other sources of information like migration patterns or seasonality to help determine at what times species inhabit an area.
+We hope this post has helped you understand how to download a species list for a specific area and compare it to conservation lists. It's also possible to compare species with other information like lists of migratory species or seasonal species.
 
-For other Python posts, check out [How to make a map in less than 5 minutes](ala-labs.org.au), or a more advanced version, [how to map invasive species](https://labs.ala.org.au/posts/2023-04-28_plotting-invasive-species/post.html).
-
-To request more posts like this, or to ask further questions, feel free to [email us](support@ala.org.au).
+For other Python posts, check out [our beginner's guide to map species observations](https://labs.ala.org.au/posts/2023-12-18_beginners-guide-make-a-map/index.html) or see [how to map distributions of invasive species](https://labs.ala.org.au/posts/2023-04-28_plotting-invasive-species/post.html).
 
 <details><summary style = "color: #E06E53;">Expand for session info</summary>
 
